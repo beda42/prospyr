@@ -290,6 +290,59 @@ instances; these only support the ``all()`` method:
     >>> <ListSet: Qualifying, Quoted, ...>
 
 
+Related resources
+-----------------
+
+The ProsperWorks API allows querying related objects for some records, such as
+all people for a company, etc. To use it in prospyr, you would use corresponding
+attributes on the relevant instance, such as ``company.people``. These are implemented
+as managers (similar to ``.objects``), so you need to run ``.all()`` on them.
+
+Because the API does not return full records for related objects, but only their
+IDs, it might be expensive to fetch all the objects - it costs `n+1` requests
+to get `n` objects. To make it possible to skip this overhead when the actual
+content of the related objects is not necessary, it is possible to pass ``lazy_instances``
+keyword argument to ``.all()`` and the returned object will only contain the
+corresponding ID. It is possible to fill the object with data later on using
+its ``.read()`` method.
+
+There is also a convenience ``.count()`` method which returns the number of
+related records as integer.
+
+Example:
+
+.. code-block:: python
+
+    for company in Company.objects.all():
+       print(company.name)
+       # the following does 1 request for opportunities and 1 request for people
+       print("Opportunities: {0}, persons: {1}".format(company.opportunities.all().count(),
+                                                       company.people.all().count())
+             )
+       for person in company.people.all(lazy_instances=True):  # one request for the list
+           print(person.id)  # the person does not have anything else than .id
+           person.read()     # fetch person data - 1 request
+           print(person)
+
+If you just iterate over the result of ``.all()`` without the ``lazy_instances`` attr
+being set to True, one request will be fired for each iteration. However, it is done
+lazily, so if you prematurely stop the loop, it will save you some requests.
+
+Example:
+
+.. code-block:: python
+
+    for person in company.people.all():  # 1 request for the list, 1 per person
+        print(person)
+
+The related resources are as follows:
+
+  * ``Company`` - ``people``, ``opportunities``, ``tasks``
+  * ``Person`` - ``companies``, ``opportunities``, ``tasks``
+  * ``Opportunity`` - ``companies``, ``people``, ``tasks``
+  * ``Task`` - ``companies``, ``people``, ``opportunities``, ``leads``
+
+
 Account
 -------
 
