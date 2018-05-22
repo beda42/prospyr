@@ -12,7 +12,7 @@ from six import string_types, with_metaclass
 from prospyr import connection, exceptions, mixins, schema
 from prospyr.exceptions import ApiError, ProspyrException
 from prospyr.fields import NestedIdentifiedResource, NestedResource, Unix
-from prospyr.search import ActivityTypeListSet, ListSet, ResultSet
+from prospyr.search import ActivityTypeListSet, ListSet, ResultSet, RelatedListSet
 from prospyr.util import encode_typename, import_dotted_path, to_snake
 
 logger = getLogger(__name__)
@@ -21,6 +21,7 @@ logger = getLogger(__name__)
 class Manager(object):
 
     _search_cls = ResultSet
+    _instance_related = False
 
     def get(self, id):
         instance = self.resource_cls()
@@ -30,13 +31,16 @@ class Manager(object):
 
     def __get__(self, instance, cls):
         if instance:
-            raise AttributeError(
-                'You can\'t access this {manager_cls} from a resource '
-                'instance; Use {resource_cls}.objects instead'.format(
-                    resource_cls=type(instance).__name__,
-                    manager_cls=type(self).__name__
+            if not self._instance_related:
+                raise AttributeError(
+                    'You can\'t access this {manager_cls} from a resource '
+                    'instance; Use {resource_cls}.objects instead'.format(
+                        resource_cls=type(instance).__name__,
+                        manager_cls=type(self).__name__
+                    )
                 )
-            )
+            else:
+                self.resource_instance = instance
         self.resource_cls = cls
         self.using = 'default'
         return self
@@ -92,6 +96,42 @@ class ListOnlyManager(Manager):
 
     def all(self):
         return self._search_cls(resource_cls=self.resource_cls,
+                                using=self.using)
+
+
+class RelatedListManager(Manager):
+    """
+    Manage a list of related resources to parent resource.
+    """
+
+    _results_by_id = None
+    _search_cls = RelatedListSet
+    _instance_related = True
+
+    def __init__(self, related_name, related_cls):
+        self._related_name = related_name
+        self._related_cls = related_cls
+
+    def results_by_id(self, force_refresh=False):
+        if self._results_by_id is None or force_refresh is True:
+            rs = self.all()
+            self._results_by_id = {r.id: r for r in rs}
+        return self._results_by_id
+
+    def get(self, id):
+        result = self.results_by_id().get(id)
+        if result is None:
+            # perhaps our cache is stale?
+            result = self.results_by_id(force_refresh=True).get(id)
+            if result is None:
+                raise KeyError('Record with id `%s` does not exist' % id)
+        return result
+
+    def all(self, lazy_instances=False):
+        return self._search_cls(globals().get(self._related_cls),
+                                self.resource_instance,
+                                self._related_name,
+                                lazy_instances=lazy_instances,
                                 using=self.using)
 
 
@@ -184,6 +224,12 @@ class ResourceMeta(type):
             raise AttributeError('Class %s must define a `class Meta`' %
                                  cls.__name__)
         attrs['Meta'].schema = schema_cls()
+
+        # create related fields
+        if hasattr(attrs['Meta'], 'related_fields'):
+            related_fields = getattr(attrs['Meta'], 'related_fields')
+            for name, rel_cls_name in related_fields:
+                attrs[name] = RelatedListManager(name, rel_cls_name)
 
         return super_new(cls, name, bases, attrs)
 
@@ -376,6 +422,11 @@ class Company(Resource, mixins.ReadWritable):
             'date_created',
             'date_modified',
         }
+        related_fields = [
+            ('opportunities', 'Opportunity'),
+            ('people', 'Person'),
+            ('tasks', 'Task'),
+        ]
 
     id = fields.Integer()
     name = fields.String(required=True)
@@ -412,6 +463,11 @@ class Person(Resource, mixins.ReadWritable):
             'date_created',
             'date_modified',
         }
+        related_fields = [
+            ('opportunities', 'Opportunity'),
+            ('companies', 'Company'),
+            ('tasks', 'Task'),
+        ]
 
     objects = PersonManager()
 
@@ -500,6 +556,11 @@ class Opportunity(Resource, mixins.ReadWritable):
             'date_created',
             'date_modified',
         }
+        related_fields = [
+            ('people', 'Person'),
+            ('companies', 'Company'),
+            ('tasks', 'Task'),
+        ]
 
     id = fields.Integer()
     name = fields.String(required=True)
@@ -622,6 +683,12 @@ class Task(Resource, mixins.ReadWritable):
             'date_created',
             'date_modified',
         }
+        related_fields = [
+            ('people', 'Person'),
+            ('companies', 'Company'),
+            ('leads', 'Lead'),
+            ('opportunities', 'Opportunity')
+        ]
 
     id = fields.Integer()
     name = fields.String()

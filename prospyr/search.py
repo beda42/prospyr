@@ -224,6 +224,67 @@ class ListSet(LazyCacheList):
         raise NotImplementedError('ListSet does not support ordering')
 
 
+class RelatedListSet(LazyCacheList):
+
+    def __init__(self, resource_cls, resource_instance, related_field,
+                 lazy_instances=False, using='default', invalid_dest=None):
+        super().__init__(invalid_dest)
+        self._resource_cls = resource_cls
+        self._resource_instance = resource_instance
+        self._related_field = related_field
+        self._using = using
+        self._lazy_instances = lazy_instances
+
+    @property
+    def _conn(self):
+        return connection.get(self._using)
+
+    def _build_url(self):
+        path = self._resource_instance.Meta.detail_path.format(id=self._resource_instance.id)
+        path += "related/{}".format(self._related_field)
+        return self._conn.build_absolute_url(path)
+
+    def _results_generator(self):
+        """
+        If self._lazy_instances is True, than objects with only id will be returned for which you
+        have to call .read() to obtain the actual content of the object
+        :return:
+        """
+        url = self._build_url()
+        resp = self._conn.get(url)
+
+        if resp.status_code != codes.ok:
+            raise exceptions.ApiError(resp.status_code, resp.text)
+
+        for rec in resp.json():
+            if self._lazy_instances:
+                resource = self._resource_cls(id=rec['id'])
+                yield resource
+            else:
+                resource = self._resource_cls.objects.get(id=rec['id'])
+                yield resource
+
+    def all(self):
+        return self
+
+    def count(self):
+        """
+        Because the API requires one call for the whole related list and then one call per each
+        related object, it can be pretty slow. To allow effective counting of related objects,
+        we use this method
+        :return:
+        """
+        url = self._build_url()
+        resp = self._conn.get(url)
+        return len(resp.json())
+
+    def filter(self, *args, **kwargs):
+        raise NotImplementedError('ListSet does not support filtering')
+
+    def order_by(self, *args, **kwargs):
+        raise NotImplementedError('ListSet does not support ordering')
+
+
 class ActivityTypeListSet(ListSet):
     """
     Special-case ActivityType's listing actually being two seperate lists.
