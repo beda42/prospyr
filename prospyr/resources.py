@@ -112,20 +112,8 @@ class RelatedListManager(Manager):
         self._related_name = related_name
         self._related_cls = related_cls
 
-    def results_by_id(self, force_refresh=False):
-        if self._results_by_id is None or force_refresh is True:
-            rs = self.all()
-            self._results_by_id = {r.id: r for r in rs}
-        return self._results_by_id
-
     def get(self, id):
-        result = self.results_by_id().get(id)
-        if result is None:
-            # perhaps our cache is stale?
-            result = self.results_by_id(force_refresh=True).get(id)
-            if result is None:
-                raise KeyError('Record with id `%s` does not exist' % id)
-        return result
+        raise NotImplementedError("Only .all() method of fetching results is possible")
 
     def all(self, lazy_instances=False):
         return self._search_cls(globals().get(self._related_cls),
