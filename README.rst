@@ -314,15 +314,14 @@ Example:
 .. code-block:: python
 
     for company in Company.objects.all():
-       print(company.name)
-       # the following does 1 request for opportunities and 1 request for people
-       print("Opportunities: {0}, persons: {1}".format(company.opportunities.all().count(),
-                                                       company.people.all().count())
-             )
-       for person in company.people.all(lazy_instances=True):  # one request for the list
-           print(person.id)  # the person does not have anything else than .id
-           person.read()     # fetch person data - 1 request
-           print(person)
+        print(company.name)
+        # the following does 1 request for opportunities and 1 request for people
+        print("Opportunities: {0}, persons: {1}".format(company.opportunities.all().count(),
+                                                        company.people.all().count()))
+        for person in company.people.all(lazy_instances=True):  # one request for the list
+            print(person.id)  # the person does not have anything else than .id
+            person.read()     # fetch person data - 1 request
+            print(person)
 
 If you just iterate over the result of ``.all()`` without the ``lazy_instances`` attr
 being set to True, one request will be fired for each iteration. However, it is done
