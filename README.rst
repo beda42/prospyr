@@ -337,10 +337,10 @@ Example:
 
 The related resources are as follows:
 
-  * ``Company`` - ``people``, ``opportunities``, ``tasks``
-  * ``Person`` - ``companies``, ``opportunities``, ``tasks``
-  * ``Opportunity`` - ``companies``, ``people``, ``tasks``
-  * ``Task`` - ``companies``, ``people``, ``opportunities``, ``leads``
+* ``Company`` - ``people``, ``opportunities``, ``tasks``
+* ``Person`` - ``companies``, ``opportunities``, ``tasks``
+* ``Opportunity`` - ``companies``, ``people``, ``tasks``
+* ``Task`` - ``companies``, ``people``, ``opportunities``, ``leads``
 
 
 Account
