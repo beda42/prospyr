@@ -563,7 +563,7 @@ class Opportunity(Resource, mixins.ReadWritable):
     customer_source = Related(CustomerSource)
     pipeline = Related(Pipeline)
     pipeline_stage = Related(PipelineStage)
-    primary_contact = Related(Person, required=True)
+    primary_contact = Related(Person, required=False)
     priority = fields.String(
         allow_none=True,
         validate=OneOf(choices=('None', 'Low', 'Medium', 'High')),
