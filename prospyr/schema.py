@@ -63,7 +63,7 @@ class EmailSchema(NamedTupleSchema):
 
 class WebsiteSchema(NamedTupleSchema):
     url = fields.String()  # PW does not validate URLs so neither do we
-    category = fields.String()
+    category = fields.String(allow_none=True)
 
 
 class SocialSchema(NamedTupleSchema):

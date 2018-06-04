@@ -563,7 +563,7 @@ class Opportunity(Resource, mixins.ReadWritable):
     customer_source = Related(CustomerSource)
     pipeline = Related(Pipeline)
     pipeline_stage = Related(PipelineStage)
-    primary_contact = Related(Person, required=True)
+    primary_contact = Related(Person, required=False)
     priority = fields.String(
         allow_none=True,
         validate=OneOf(choices=('None', 'Low', 'Medium', 'High')),
@@ -573,7 +573,7 @@ class Opportunity(Resource, mixins.ReadWritable):
         validate=OneOf(choices=('Open', 'Won', 'Lost', 'Abandoned')),
     )
     tags = fields.List(fields.String)
-    win_probability = fields.Integer()
+    win_probability = fields.Integer(required=False, allow_none=True)
     date_created = Unix()
     date_modified = Unix()
 
